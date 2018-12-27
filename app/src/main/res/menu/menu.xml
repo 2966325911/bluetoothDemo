@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+	  xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<item
+		android:id="@+id/menu_read"
+		android:title="读取"
+		app:showAsAction="always"
+		android:visible="false"/>
+
+	<item
+		android:id="@+id/menu_bpm"
+		android:title="血压"
+		app:showAsAction="collapseActionView"/>
+
+	<item
+		android:id="@+id/menu_glu"
+		android:title="血糖"
+		app:showAsAction="collapseActionView"/>
+
+	<item
+		android:id="@+id/menu_oxy"
+		android:title="血氧"
+		app:showAsAction="collapseActionView"/>
+
+	<item
+		android:id="@+id/menu_chol"
+		android:title="血脂"
+		app:showAsAction="collapseActionView"/>
+
+	<item
+		android:id="@+id/menu_urine"
+		android:title="尿液"
+		app:showAsAction="collapseActionView"/>
+
+	<item
+		android:id="@+id/menu_temp"
+		android:title="体温"
+		app:showAsAction="collapseActionView"/>
+	<item
+		android:id="@+id/menu_weight"
+		android:title="体脂称"
+		app:showAsAction="collapseActionView"/>
+</menu>
