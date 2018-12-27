@@ -10,14 +10,14 @@ import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.kangengine.bluebooth.UricAcidCovertUtil;
+import com.kangengine.bluebooth.blutboothutil.databean.UricAcidData;
 import com.kangengine.bluebooth.blutboothutil.le.constants.Characteristic;
 import com.kangengine.bluebooth.blutboothutil.le.constants.Service;
 import com.kangengine.bluebooth.blutboothutil.le.core.BleManager;
 import com.kangengine.bluebooth.blutboothutil.le.core.Request;
-import com.kangengine.bluebooth.blutboothutil.le.device.hts.HTSManagerCallbacks;
 import com.kangengine.bluebooth.blutboothutil.utils.Utils;
-
-import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -29,102 +29,140 @@ import no.nordicsemi.android.support.v18.scanner.ScanRecord;
  * desc    : 尿酸
  */
 public class UricAcidManager extends BleManager {
-    
-    private BluetoothGattCharacteristic mMeasurement;
-    private BluetoothGattCharacteristic mUricAcidMeasurement;
-    private long last;
+
+    private static final String TAG = UricAcidManager.class.getSimpleName();
+    private BluetoothGattCharacteristic mGMCharacteristic;
+    private BluetoothGattCharacteristic mDateTimeCharacteristic;
+//    private BluetoothGattCharacteristic mCurrentTimeCharacteristic;
+    private BluetoothGattCharacteristic mRecordAccessControlPointCharacteristic;
+
     private static UricAcidManager managerInstance = null;
+    private boolean updateData = false;
     private final BleManager.BleManagerGattCallback mGattCallback = new BleManager.BleManagerGattCallback() {
         @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         protected boolean isRequiredServiceSupported(BluetoothGatt gatt) {
-            BluetoothGattService mService = gatt.getService(Service.THERMOMETER);
-            BluetoothGattService mHTService = gatt.getService(Service.HEALTH_THERMOMETER);
-            if(mService != null) {
-                UricAcidManager.this.mMeasurement = mService.getCharacteristic(Characteristic.THERMOMETER);
+            BluetoothGattService mBGService = gatt.getService(Service.URIC_ACID_MEASUREMENT);
+            if(mBGService != null) {
+                UricAcidManager.this.mDateTimeCharacteristic = mBGService.getCharacteristic(Characteristic.DATE_TIME);
+                UricAcidManager.this.mGMCharacteristic = mBGService.getCharacteristic(Characteristic.URIC_ACID);
             }
 
-            if(mHTService != null) {
-                UricAcidManager.this.mUricAcidMeasurement = mHTService.getCharacteristic(Characteristic.HT_MEASUREMENT);
-            }
+//            BluetoothGattService mCurrentTime = gatt.getService(Service.CURRENT_TIME);
+//            if(mCurrentTime != null) {
+//                UricAcidManager.this.mCurrentTimeCharacteristic = mCurrentTime.getCharacteristic(Characteristic.CURRENT_TIME);
+//            }
 
-            return mService != null || mHTService != null;
+            return mBGService != null;
         }
         @Override
         protected Queue initGatt(BluetoothGatt gatt) {
             LinkedList requests = new LinkedList();
-            if(UricAcidManager.this.mMeasurement != null) {
-                requests.push(Request.newEnableNotificationsRequest(UricAcidManager.this.mMeasurement));
-            }
-
-            if(UricAcidManager.this.mUricAcidMeasurement != null) {
-                requests.push(Request.newEnableIndicationsRequest(UricAcidManager.this.mUricAcidMeasurement));
-            }
+            requests.push(Request.newEnableNotificationsRequest(UricAcidManager.this.mGMCharacteristic));
+//            if(UricAcidManager.this.mCurrentTimeCharacteristic != null || UricAcidManager.this.mDateTimeCharacteristic != null) {
+//                requests.push(this.setDateTime());
+//            }
 
             return requests;
         }
         @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         protected void onCharacteristicNotified(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            if(Characteristic.THERMOMETER.equals(characteristic.getUuid())) {
-                byte[] bytes = characteristic.getValue();
-                if(bytes.length >= 10 && bytes[0] == -1 && bytes[1] == -2 && bytes[5] == 101) {
-                    long current = System.currentTimeMillis();
-                    if(current - UricAcidManager.this.last < 500L) {
-                        Log.d(this.TAG, "Received 2nd time");
-                        return;
-                    }
-
-                    UricAcidManager.this.last = current;
-                    double temperature = (double)((float)(Utils.unsignedByteToInt(bytes[6]) + Utils.unsignedByteToInt(bytes[7]) * 256) / 10.0F);
-                    ((HTSManagerCallbacks)UricAcidManager.this.mCallbacks).onHTValueReceived(this.roundHalfUpWithScale1(temperature));
-                }
-            }
-
-        }
-        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-        @Override
-        protected void onCharacteristicIndicated(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            if(Characteristic.HT_MEASUREMENT.equals(characteristic.getUuid())) {
-                double tempValue = this.decodeUricAcidData(characteristic.getValue());
-                ((HTSManagerCallbacks)UricAcidManager.this.mCallbacks).onHTValueReceived(this.roundHalfUpWithScale1(tempValue));
-            }
-
+            Log.d(TAG,"onCharacteristicNotified");
+            this.onBgChange(characteristic);
         }
         @Override
         protected void onDeviceDisconnected() {
-            UricAcidManager.this.mMeasurement = null;
-            UricAcidManager.this.mUricAcidMeasurement = null;
+//            UricAcidManager.this.mCurrentTimeCharacteristic = null;
+            UricAcidManager.this.mDateTimeCharacteristic = null;
+            UricAcidManager.this.mGMCharacteristic = null;
+            updateData = false;
         }
-        private double decodeUricAcidData(byte[] data) {
-            byte flag = data[0];
-            byte exponential = data[4];
-            short firstOctet = this.convertNegativeByteToPositiveShort(data[1]);
-            short secondOctet = this.convertNegativeByteToPositiveShort(data[2]);
-            short thirdOctet = this.convertNegativeByteToPositiveShort(data[3]);
-            int mantissa = (thirdOctet << 16 | secondOctet << 8 | firstOctet) & 16777215;
-            mantissa = this.getTwosComplimentOfNegativeMantissa(mantissa);
-            double temperatureValue = (double)mantissa * Math.pow(10.0D, (double)exponential);
-            if((flag & 1) != 0) {
-                temperatureValue = (double)((float)((98.6D * temperatureValue - 32.0D) * 0.5555555555555556D));
+        private Request setDateTime() {
+            Calendar calendar = Calendar.getInstance();
+            int year = calendar.get(1);
+            int month = calendar.get(2) + 1;
+            int day = calendar.get(5);
+            int hour = calendar.get(11);
+            int min = calendar.get(12);
+            int sec = calendar.get(13);
+            BluetoothGattCharacteristic characteristic = null;
+            byte byteSize = 0;
+            if(UricAcidManager.this.mDateTimeCharacteristic != null) {
+                characteristic = UricAcidManager.this.mDateTimeCharacteristic;
+                byteSize = 7;
             }
 
-            return temperatureValue;
+//            if(UricAcidManager.this.mCurrentTimeCharacteristic != null) {
+//                characteristic = UricAcidManager.this.mCurrentTimeCharacteristic;
+//                byteSize = 10;
+//            }
+
+            byte[] array = new byte[byteSize];
+            array[0] = (byte)(year & 255);
+            array[1] = (byte)(year >> 8 & 255);
+            array[2] = (byte)(month & 255);
+            array[3] = (byte)(day & 255);
+            array[4] = (byte)(hour & 255);
+            array[5] = (byte)(min & 255);
+            array[6] = (byte)(sec & 255);
+            return Request.newWriteRequest(characteristic, array);
         }
-        private short convertNegativeByteToPositiveShort(byte octet) {
-            return octet < 0?(short)(octet & 255):(short)octet;
-        }
-        private int getTwosComplimentOfNegativeMantissa(int mantissa) {
-            return (mantissa & 4194304) != 0?((~mantissa & 16777215) + 1) * -1:mantissa;
-        }
-        private double roundHalfUpWithScale1(double value) {
-            BigDecimal b = new BigDecimal(value);
-            return b.setScale(1, 4).doubleValue();
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+        private void onBgChange(BluetoothGattCharacteristic characteristic) {
+            UricAcidData uricAcidData = new UricAcidData();
+            byte offset = 0;
+            int flags = characteristic.getIntValue(17, offset).intValue();
+            int offset1 = offset + 1;
+            boolean timeOffsetPresent = (flags & 1) > 0;
+            boolean typeAndLocationPresent = (flags & 2) > 0;
+            boolean concentrationUnit = (flags & 4) > 0;
+            boolean sensorStatusAnnunciationPresent = (flags & 8) > 0;
+            boolean contextInfoFollows = (flags & 16) > 0;
+            int sequenceNumber = characteristic.getIntValue(18, offset1).intValue();
+            offset1 += 2;
+            int year = characteristic.getIntValue(18, offset1 + 0).intValue();
+            int month = characteristic.getIntValue(17, offset1 + 2).intValue() - 1;
+            int day = characteristic.getIntValue(17, offset1 + 3).intValue();
+            int hours = characteristic.getIntValue(17, offset1 + 4).intValue();
+            int minutes = characteristic.getIntValue(17, offset1 + 5).intValue();
+            int seconds = characteristic.getIntValue(17, offset1 + 6).intValue();
+            offset1 += 7;
+            Calendar calendar = Calendar.getInstance();
+            calendar.set(year, month, day, hours, minutes, seconds);
+            uricAcidData.time = calendar.getTime();
+            int status;
+            if(timeOffsetPresent) {
+                status = characteristic.getIntValue(34, offset1).intValue();
+                offset1 += 2;
+            }
+
+            if(typeAndLocationPresent) {
+                float status1 = characteristic.getFloatValue(50, offset1).floatValue();
+
+                int typeAndLocation = characteristic.getIntValue(17, offset1 + 2).intValue();
+                int type = (typeAndLocation & 240) >> 4;
+                int sampleLocation = typeAndLocation & 15;
+                offset1 += 3;
+                uricAcidData.value = Utils.multiply2(status1*1000, 3);
+
+                if(!updateData) {
+                    ((UricAcidManagerCallbacks)UricAcidManager.this.mCallbacks).onUricAcidDataRead(uricAcidData);
+                    updateData = true;
+                }
+
+            }
+
+            if(sensorStatusAnnunciationPresent) {
+                status = characteristic.getIntValue(18, offset1).intValue();
+                offset1 += 2;
+            }
+
         }
     };
 
 
-    private UricAcidManager(Context context) {
+    protected UricAcidManager(Context context) {
         super(context);
     }
 
@@ -136,6 +174,10 @@ public class UricAcidManager extends BleManager {
         return managerInstance;
     }
 
+    public static boolean isSpecfiedDevice(String deviceName) {
+        return !TextUtils.isEmpty(deviceName) && deviceName.contains("BeneCheck");
+    }
+
     @Override
     protected BleManager.BleManagerGattCallback getGattCallback() {
         return this.mGattCallback;
@@ -143,13 +185,18 @@ public class UricAcidManager extends BleManager {
 
     @Override
     public boolean connectable(BluetoothDevice device, int rssi, ScanRecord scanRecord) {
-        String deviceName = device.getName();
-        return super.connectable(device, rssi, scanRecord) && ("MEDXING-IRT".equalsIgnoreCase(device.getName()) || !TextUtils.isEmpty(deviceName) && deviceName.contains("TAIDOC"));
+        return super.connectable(device, rssi, scanRecord) && isSpecfiedDevice(device.getName());
+    }
+
+    public void setReadBattery(boolean readBattery) {
+        this.mGattCallback.setReadBattery(readBattery);
     }
 
     @Override
     public void onClose() {
-        this.mMeasurement = null;
-        this.mUricAcidMeasurement = null;
+//        this.mCurrentTimeCharacteristic = null;
+        this.mDateTimeCharacteristic = null;
+        this.mGMCharacteristic = null;
     }
+
 }

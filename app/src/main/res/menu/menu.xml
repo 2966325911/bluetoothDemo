@@ -41,4 +41,8 @@
 		android:id="@+id/menu_weight"
 		android:title="体脂称"
 		app:showAsAction="collapseActionView"/>
+	<item
+		android:id="@+id/menu_uric_acid"
+		android:title="尿酸"
+		app:showAsAction="collapseActionView"/>
 </menu>

@@ -6,6 +6,7 @@ import com.kangengine.bluebooth.blutboothutil.databean.BPMData;
 import com.kangengine.bluebooth.blutboothutil.databean.BloodOxygenData;
 import com.kangengine.bluebooth.blutboothutil.databean.CholesterolData;
 import com.kangengine.bluebooth.blutboothutil.databean.GlucoseData;
+import com.kangengine.bluebooth.blutboothutil.databean.UricAcidData;
 import com.kangengine.bluebooth.blutboothutil.databean.UrineData;
 import com.kangengine.bluebooth.blutboothutil.databean.WeightData;
 import com.kangengine.bluebooth.blutboothutil.le.device.bpm.BPMManagerCallbacks;
@@ -14,6 +15,7 @@ import com.kangengine.bluebooth.blutboothutil.le.device.gls.GlucoseManagerCallba
 import com.kangengine.bluebooth.blutboothutil.le.device.hts.HTSManagerCallbacks;
 import com.kangengine.bluebooth.blutboothutil.le.device.oxi.OximeterManagerCallbacks;
 import com.kangengine.bluebooth.blutboothutil.le.device.scale.ScaleManagerCallbacks;
+import com.kangengine.bluebooth.blutboothutil.le.device.uricacid.UricAcidManagerCallbacks;
 import com.kangengine.bluebooth.blutboothutil.le.device.urine.UAManagerCallbacks;
 
 import org.greenrobot.eventbus.EventBus;
@@ -122,7 +124,7 @@ public class CallbacksHandler {
         }
     }
 
-    public static class DefaultCallbacks implements BleManagerCallbacks, BPMManagerCallbacks, GlucoseManagerCallbacks, CholManagerCallbacks, HTSManagerCallbacks, OximeterManagerCallbacks, ScaleManagerCallbacks, UAManagerCallbacks {
+    public static class DefaultCallbacks implements BleManagerCallbacks, BPMManagerCallbacks, GlucoseManagerCallbacks, CholManagerCallbacks, HTSManagerCallbacks, OximeterManagerCallbacks, ScaleManagerCallbacks, UAManagerCallbacks,UricAcidManagerCallbacks {
         public DefaultCallbacks() {
         }
 
@@ -192,6 +194,11 @@ public class CallbacksHandler {
 
         @Override
         public void onUrineDataRead(UrineData data) {
+        }
+
+        @Override
+        public void onUricAcidDataRead(UricAcidData data) {
+
         }
     }
 }

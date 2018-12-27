@@ -1,5 +1,6 @@
 package com.kangengine.bluebooth.blutboothutil.le.device.uricacid;
 
+import com.kangengine.bluebooth.blutboothutil.databean.UricAcidData;
 import com.kangengine.bluebooth.blutboothutil.le.core.BleManagerCallbacks;
 
 /**
@@ -10,7 +11,7 @@ import com.kangengine.bluebooth.blutboothutil.le.core.BleManagerCallbacks;
 public interface UricAcidManagerCallbacks extends BleManagerCallbacks {
     /**
      * 读取到尿酸数据
-     * @param value
+     * @param data
      */
-    void onUricAcidDataRead( double value);
+    void onUricAcidDataRead( UricAcidData data);
 }

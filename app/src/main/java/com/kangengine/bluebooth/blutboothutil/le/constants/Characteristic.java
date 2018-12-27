@@ -23,4 +23,6 @@ public interface Characteristic {
    UUID BODY_COMPOSITION_MEASUREMENT = UUID.fromString("00002A9C-0000-1000-8000-00805f9b34fb");
 
 
+   UUID URIC_ACID = UUID.fromString("00002A18-0000-1000-8000-00805f9b34fb");
+
 }

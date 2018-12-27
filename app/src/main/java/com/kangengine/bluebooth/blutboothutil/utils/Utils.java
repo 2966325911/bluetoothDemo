@@ -14,6 +14,18 @@ public class Utils {
       return b1.multiply(b2).setScale(1, 1).floatValue();
    }
 
+   public static double multiply2(float data, int digit) {
+      BigDecimal b   =   new  BigDecimal(data);
+      double  endResult = 0;
+      try {
+         endResult   =   b.setScale(digit,  BigDecimal.ROUND_HALF_UP).doubleValue();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      return endResult;
+   }
+
    private static String retainOneDecimal(String val) {
       if(val.endsWith(".")) {
          val = val.substring(0, val.length() - 1);

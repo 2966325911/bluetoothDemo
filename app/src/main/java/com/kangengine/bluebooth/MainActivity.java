@@ -26,6 +26,7 @@ import com.kangengine.bluebooth.blutboothutil.databean.BPMData;
 import com.kangengine.bluebooth.blutboothutil.databean.BloodOxygenData;
 import com.kangengine.bluebooth.blutboothutil.databean.CholesterolData;
 import com.kangengine.bluebooth.blutboothutil.databean.GlucoseData;
+import com.kangengine.bluebooth.blutboothutil.databean.UricAcidData;
 import com.kangengine.bluebooth.blutboothutil.databean.UrineData;
 import com.kangengine.bluebooth.blutboothutil.databean.WeightData;
 import com.kangengine.bluebooth.blutboothutil.le.core.BleService;
@@ -36,6 +37,7 @@ import com.kangengine.bluebooth.blutboothutil.le.device.gls.GlucoseManager;
 import com.kangengine.bluebooth.blutboothutil.le.device.hts.ThermometerManager;
 import com.kangengine.bluebooth.blutboothutil.le.device.oxi.OximeterManager;
 import com.kangengine.bluebooth.blutboothutil.le.device.scale.ScaleManager;
+import com.kangengine.bluebooth.blutboothutil.le.device.uricacid.UricAcidManager;
 import com.kangengine.bluebooth.blutboothutil.le.device.urine.UAManager;
 
 public class MainActivity extends AppCompatActivity {
@@ -124,6 +126,11 @@ public class MainActivity extends AppCompatActivity {
             case R.id.menu_weight:
                 menuRead.setVisible(false);
                 serviceBinder.setBleManager(ScaleManager.getInstance(getApplicationContext()),mCallbacksHandler);
+                return true;
+            case R.id.menu_uric_acid:
+                Log.d(TAG,"=====尿酸");
+                menuRead.setVisible(false);
+                serviceBinder.setBleManager(UricAcidManager.getInstance(getApplicationContext()),mCallbacksHandler);
                 return true;
             default:
                 menuRead.setVisible(false);
@@ -290,6 +297,13 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onScaleMeasureFinished() {
             Log.d(TAG, "体重测量完成");
+        }
+
+        @Override
+        public void onUricAcidDataRead(UricAcidData data) {
+            super.onUricAcidDataRead(data);
+            Log.d(TAG,"尿酸==" +data.toJsonString());
+            showData("uric_acid:" + data.toJsonString());
         }
 
         private void showData(final String text) {
